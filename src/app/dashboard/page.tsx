@@ -1,7 +1,68 @@
 // src/app/dashboard/page.tsx
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, Package, Layers, Image as ImageIcon } from 'lucide-react';
+import {
+  BookOpen,
+  Tag,
+  LayoutTemplate,
+  Package,
+  Layers,
+  Image as ImageIcon,
+  Users,
+} from 'lucide-react';
+
+// One entry per top-level entity. Add/remove here to control the grid.
+const cards = [
+  {
+    href: '/dashboard/vocabularies',
+    title: 'Vocabularies',
+    heading: 'Manage',
+    description: 'Define metadata schemas',
+    Icon: BookOpen,
+  },
+  {
+    href: '/dashboard/properties',
+    title: 'Properties',
+    heading: 'Define',
+    description: 'Reusable metadata fields',
+    Icon: Tag,
+  },
+  {
+    href: '/dashboard/templates',
+    title: 'Resource Templates',
+    heading: 'Design',
+    description: 'Property sets for items',
+    Icon: LayoutTemplate,
+  },
+  {
+    href: '/dashboard/items',
+    title: 'Library Items',
+    heading: 'Browse',
+    description: 'View all digital assets',
+    Icon: Package,
+  },
+  {
+    href: '/dashboard/item-sets',
+    title: 'Item Sets',
+    heading: 'Collections',
+    description: 'Group items into sets',
+    Icon: Layers,
+  },
+  {
+    href: '/dashboard/media',
+    title: 'Media Gallery',
+    heading: 'Files',
+    description: 'Upload & manage media',
+    Icon: ImageIcon,
+  },
+  {
+    href: '/dashboard/users',
+    title: 'Users',
+    heading: 'Accounts',
+    description: 'Manage user access',
+    Icon: Users,
+  },
+];
 
 export default function DashboardHomePage() {
   return (
@@ -13,65 +74,26 @@ export default function DashboardHomePage() {
         </p>
       </div>
 
-      {/* Quick Stats / Navigation Cards */}
+      {/* Navigation cards — one per entity */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        
-        {/* Vocabularies Card (The one you just built!) */}
-        <Link href="/dashboard/vocabularies" className="transition-transform hover:scale-105">
-          <Card className="hover:border-primary cursor-pointer h-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Vocabularies</CardTitle>
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">Manage</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Define metadata schemas
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
-
-        {/* Items Card (Placeholder for future) */}
-        <Link href="/dashboard/items" className="transition-transform hover:scale-105">
-          <Card className="hover:border-primary cursor-pointer h-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Library Items</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">Browse</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                View all digital assets
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
-
-        {/* Item Sets Card (Placeholder) */}
-        <Card className="opacity-60">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Item Sets</CardTitle>
-            <Layers className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">Collections</div>
-            <p className="text-xs text-muted-foreground mt-1">Coming soon...</p>
-          </CardContent>
-        </Card>
-
-        {/* Media Card (Placeholder) */}
-        <Card className="opacity-60">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Media Gallery</CardTitle>
-            <ImageIcon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">Files</div>
-            <p className="text-xs text-muted-foreground mt-1">Coming soon...</p>
-          </CardContent>
-        </Card>
-
+        {cards.map(({ href, title, heading, description, Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className="transition-transform hover:scale-105"
+          >
+            <Card className="hover:border-primary cursor-pointer h-full">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">{title}</CardTitle>
+                <Icon className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{heading}</div>
+                <p className="text-xs text-muted-foreground mt-1">{description}</p>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
       </div>
     </div>
   );
