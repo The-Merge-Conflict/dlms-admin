@@ -1,8 +1,8 @@
+// src/types/users.ts
+// Matches DLMS backend UserDto (GET /api/users).
 export interface UserDto {
   id: string;
+  userName: string;
   email: string;
-  fullName: string;
-  role: 'Admin' | 'Editor' | 'Viewer';
-  isActive: boolean;
-  createdAt: string;
+  roles: string[];
 }

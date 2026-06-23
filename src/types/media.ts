@@ -8,4 +8,5 @@ export interface MediaDto {
   mimeType: string;
   fileSize: number;
   altText: string;
+  thumbnail?: string | null;
 }

@@ -71,10 +71,10 @@ export function MediaPanel({ itemId }: { itemId: number }) {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {media.map((m) => (
               <div key={m.id} className="rounded-md border overflow-hidden">
-                {m.mimeType?.startsWith('image/') ? (
+                {m.thumbnail || m.mimeType?.startsWith('image/') ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={mediaUrl(m.storagePath)}
+                    src={m.thumbnail || mediaUrl(m.storagePath)}
                     alt={m.altText || m.fileName}
                     className="h-32 w-full object-cover"
                   />

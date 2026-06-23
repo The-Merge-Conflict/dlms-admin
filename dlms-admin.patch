@@ -1,0 +1,320 @@
+diff --git a/src/app/dashboard/item-sets/[id]/page.tsx b/src/app/dashboard/item-sets/[id]/page.tsx
+index e70c8e6..fd38424 100644
+--- a/src/app/dashboard/item-sets/[id]/page.tsx
++++ b/src/app/dashboard/item-sets/[id]/page.tsx
+@@ -65,14 +65,6 @@ export default function ItemSetDetailPage({
+           <CardTitle>Members</CardTitle>
+         </CardHeader>
+         <CardContent className="space-y-4">
+-          {itemSet.items === undefined && (
+-            <p className="text-xs text-muted-foreground">
+-              Note: the backend item-set response does not currently include its
+-              members, so the list below may be empty even after adding items.
+-              Add/remove actions are still sent to the server.
+-            </p>
+-          )}
+-
+           {members.length === 0 ? (
+             <p className="text-muted-foreground">No items in this set yet.</p>
+           ) : (
+diff --git a/src/app/dashboard/users/page.tsx b/src/app/dashboard/users/page.tsx
+index 075dca5..bb4ee7c 100644
+--- a/src/app/dashboard/users/page.tsx
++++ b/src/app/dashboard/users/page.tsx
+@@ -1,33 +1,84 @@
+ 'use client';
+ // src/app/dashboard/users/page.tsx
+-// The backend currently exposes only registration (POST /api/auth/register) and
+-// no "list users" endpoint, so this page focuses on creating user accounts.
++// Lists all users (GET /api/users) and lets an admin create new accounts.
++import { useQueryClient } from '@tanstack/react-query';
+ import { RegisterForm } from '@/components/forms/register-form';
++import { useUsers, userKeys } from '@/lib/hooks/use-users';
++import { Badge } from '@/components/ui/badge';
++import { Skeleton } from '@/components/ui/skeleton';
+ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
++import {
++  Table,
++  TableBody,
++  TableCell,
++  TableHead,
++  TableHeader,
++  TableRow,
++} from '@/components/ui/table';
+ 
+ export default function UsersPage() {
++  const { data: users, isLoading, error } = useUsers();
++  const queryClient = useQueryClient();
++
+   return (
+     <div className="space-y-6">
+       <h1 className="text-2xl font-bold">Users</h1>
+ 
+-      <Card className="max-w-lg">
++      <Card>
+         <CardHeader>
+-          <CardTitle>About user management</CardTitle>
++          <CardTitle>All users</CardTitle>
+         </CardHeader>
+-        <CardContent className="text-sm text-muted-foreground space-y-2">
+-          <p>
+-            The DLMS API supports creating accounts via registration. A
+-            “list all users” endpoint is not available yet, so existing users
+-            cannot be displayed here.
+-          </p>
+-          <p>
+-            Once the backend adds a users listing endpoint, this page can be
+-            extended with a table and role-management actions.
+-          </p>
++        <CardContent>
++          {isLoading ? (
++            <div className="space-y-3">
++              {Array.from({ length: 4 }).map((_, i) => (
++                <Skeleton key={i} className="h-10 w-full" />
++              ))}
++            </div>
++          ) : error ? (
++            <p className="text-destructive">Failed to load users.</p>
++          ) : !users || users.length === 0 ? (
++            <p className="text-muted-foreground">No users found.</p>
++          ) : (
++            <Table>
++              <TableHeader>
++                <TableRow>
++                  <TableHead>Username</TableHead>
++                  <TableHead>Email</TableHead>
++                  <TableHead>Roles</TableHead>
++                </TableRow>
++              </TableHeader>
++              <TableBody>
++                {users.map((u) => (
++                  <TableRow key={u.id}>
++                    <TableCell className="font-medium">{u.userName}</TableCell>
++                    <TableCell className="text-muted-foreground">{u.email}</TableCell>
++                    <TableCell>
++                      <div className="flex flex-wrap gap-1">
++                        {u.roles.length > 0 ? (
++                          u.roles.map((r) => (
++                            <Badge key={r} variant="secondary">
++                              {r}
++                            </Badge>
++                          ))
++                        ) : (
++                          <span className="text-muted-foreground text-sm">None</span>
++                        )}
++                      </div>
++                    </TableCell>
++                  </TableRow>
++                ))}
++              </TableBody>
++            </Table>
++          )}
+         </CardContent>
+       </Card>
+ 
+-      <RegisterForm />
++      <RegisterForm
++        onCreated={() =>
++          queryClient.invalidateQueries({ queryKey: userKeys.all })
++        }
++      />
+     </div>
+   );
+ }
+diff --git a/src/components/forms/item-form.tsx b/src/components/forms/item-form.tsx
+index 9de8ff6..5177c91 100644
+--- a/src/components/forms/item-form.tsx
++++ b/src/components/forms/item-form.tsx
+@@ -8,6 +8,7 @@ import { useResourceTemplates, useResourceTemplate } from '@/lib/hooks/use-resou
+ import { useCreateItem, useUpdateItem } from '@/lib/hooks/use-items';
+ import { ItemDto } from '@/types/items';
+ import { ValueInput, ValueType } from '@/types/values';
++import { itemSchema } from '@/lib/validations/item.schema';
+ import { Button } from '@/components/ui/button';
+ import { Input } from '@/components/ui/input';
+ import { Label } from '@/components/ui/label';
+@@ -97,6 +98,15 @@ export function ItemForm({ existing }: Props) {
+   async function handleSubmit() {
+     setSubmitError(null);
+ 
++    // A template is now mandatory for every item.
++    const templateCheck = itemSchema.safeParse({ templateId });
++    if (!templateCheck.success) {
++      setSubmitError(
++        templateCheck.error.issues[0]?.message ?? 'Please select a template.',
++      );
++      return;
++    }
++
+     // Validate required fields.
+     for (const r of rows) {
+       if (r.isRequired) {
+@@ -133,13 +143,13 @@ export function ItemForm({ existing }: Props) {
+     try {
+       if (existing) {
+         await updateItem.mutateAsync({
+-          templateId: templateId || null,
++          templateId,
+           values,
+         });
+         router.push(`/dashboard/items/${existing.id}`);
+       } else {
+         const { id } = await createItem.mutateAsync({
+-          templateId: templateId || null,
++          templateId,
+           values,
+         });
+         router.push(`/dashboard/items/${id}`);
+@@ -163,7 +173,9 @@ export function ItemForm({ existing }: Props) {
+             value={templateId}
+             onChange={(e) => setTemplateId(Number(e.target.value))}
+           >
+-            <option value={0}>No template (free-form)</option>
++            <option value={0} disabled>
++              Select a template…
++            </option>
+             {templates.map((t) => (
+               <option key={t.id} value={t.id}>
+                 {t.label}
+@@ -174,8 +186,7 @@ export function ItemForm({ existing }: Props) {
+ 
+         {templateId === 0 && (
+           <p className="text-sm text-muted-foreground">
+-            Select a template to fill in its properties. Items without a template are
+-            created empty and values can be added later.
++            A template is required. Choose one to fill in its properties.
+           </p>
+         )}
+ 
+diff --git a/src/components/media-panel.tsx b/src/components/media-panel.tsx
+index f46ef9e..2d9b9c9 100644
+--- a/src/components/media-panel.tsx
++++ b/src/components/media-panel.tsx
+@@ -71,10 +71,10 @@ export function MediaPanel({ itemId }: { itemId: number }) {
+           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+             {media.map((m) => (
+               <div key={m.id} className="rounded-md border overflow-hidden">
+-                {m.mimeType?.startsWith('image/') ? (
++                {m.thumbnail || m.mimeType?.startsWith('image/') ? (
+                   // eslint-disable-next-line @next/next/no-img-element
+                   <img
+-                    src={mediaUrl(m.storagePath)}
++                    src={m.thumbnail || mediaUrl(m.storagePath)}
+                     alt={m.altText || m.fileName}
+                     className="h-32 w-full object-cover"
+                   />
+diff --git a/src/lib/api/users.ts b/src/lib/api/users.ts
+new file mode 100644
+index 0000000..ab4d111
+--- /dev/null
++++ b/src/lib/api/users.ts
+@@ -0,0 +1,11 @@
++// src/lib/api/users.ts
++// Backend: GET /api/users returns all registered users with their roles (Admin only).
++import apiClient from './axios-client';
++import { UserDto } from '@/types/users';
++
++export const usersApi = {
++  getAll: async (): Promise<UserDto[]> => {
++    const { data } = await apiClient.get<UserDto[]>('/users');
++    return data;
++  },
++};
+diff --git a/src/lib/hooks/use-users.ts b/src/lib/hooks/use-users.ts
+new file mode 100644
+index 0000000..0a60c98
+--- /dev/null
++++ b/src/lib/hooks/use-users.ts
+@@ -0,0 +1,14 @@
++// src/lib/hooks/use-users.ts
++import { useQuery } from '@tanstack/react-query';
++import { usersApi } from '@/lib/api/users';
++
++export const userKeys = {
++  all: ['users'] as const,
++};
++
++export function useUsers() {
++  return useQuery({
++    queryKey: userKeys.all,
++    queryFn: () => usersApi.getAll(),
++  });
++}
+diff --git a/src/lib/validations/item.schema.ts b/src/lib/validations/item.schema.ts
+new file mode 100644
+index 0000000..26d9856
+--- /dev/null
++++ b/src/lib/validations/item.schema.ts
+@@ -0,0 +1,12 @@
++// src/lib/validations/item.schema.ts
++import { z } from 'zod';
++
++// A template is mandatory for every item.
++export const itemSchema = z.object({
++  templateId: z.coerce
++    .number({ error: 'A template is required' })
++    .int()
++    .positive('Please select a template'),
++});
++
++export type ItemFormValues = z.infer<typeof itemSchema>;
+diff --git a/src/types/item-sets.ts b/src/types/item-sets.ts
+index 467bc30..5f80549 100644
+--- a/src/types/item-sets.ts
++++ b/src/types/item-sets.ts
+@@ -1,6 +1,12 @@
+ // src/types/item-sets.ts
+ // Matches DLMS backend ItemSetDto + ItemSets endpoints.
+-import { ItemDto } from './items';
++// A lightweight view of an item as it appears inside an item set's members list.
++export interface ItemSetMemberDto {
++  id: number;
++  templateId: number | null;
++  templateLabel: string;
++  createdAt: string; // ISO datetime
++}
+ 
+ export interface ItemSetDto {
+   id: number;
+@@ -9,9 +15,9 @@ export interface ItemSetDto {
+   isPublic: boolean;
+   createdBy: string;
+   createdAt: string; // ISO datetime
+-  // The basic ItemSetDto does not always include members. The detail endpoint
+-  // (GET /api/itemsets/{id}) may include them; we read them optionally if present.
+-  items?: ItemDto[];
++  itemCount: number;
++  // The detail endpoint (GET /api/itemsets/{id}) includes the set's members.
++  items: ItemSetMemberDto[];
+ }
+ 
+ // POST /api/itemsets
+diff --git a/src/types/media.ts b/src/types/media.ts
+index 1543696..acf9039 100644
+--- a/src/types/media.ts
++++ b/src/types/media.ts
+@@ -8,4 +8,5 @@ export interface MediaDto {
+   mimeType: string;
+   fileSize: number;
+   altText: string;
++  thumbnail?: string | null;
+ }
+diff --git a/src/types/users.ts b/src/types/users.ts
+index f495304..254dd46 100644
+--- a/src/types/users.ts
++++ b/src/types/users.ts
+@@ -1,8 +1,8 @@
++// src/types/users.ts
++// Matches DLMS backend UserDto (GET /api/users).
+ export interface UserDto {
+   id: string;
++  userName: string;
+   email: string;
+-  fullName: string;
+-  role: 'Admin' | 'Editor' | 'Viewer';
+-  isActive: boolean;
+-  createdAt: string;
+-}
+\ No newline at end of file
++  roles: string[];
++}

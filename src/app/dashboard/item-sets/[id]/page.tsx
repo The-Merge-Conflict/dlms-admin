@@ -65,14 +65,6 @@ export default function ItemSetDetailPage({
           <CardTitle>Members</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {itemSet.items === undefined && (
-            <p className="text-xs text-muted-foreground">
-              Note: the backend item-set response does not currently include its
-              members, so the list below may be empty even after adding items.
-              Add/remove actions are still sent to the server.
-            </p>
-          )}
-
           {members.length === 0 ? (
             <p className="text-muted-foreground">No items in this set yet.</p>
           ) : (

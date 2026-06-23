@@ -8,6 +8,7 @@ import { useResourceTemplates, useResourceTemplate } from '@/lib/hooks/use-resou
 import { useCreateItem, useUpdateItem } from '@/lib/hooks/use-items';
 import { ItemDto } from '@/types/items';
 import { ValueInput, ValueType } from '@/types/values';
+import { itemSchema } from '@/lib/validations/item.schema';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -97,6 +98,15 @@ export function ItemForm({ existing }: Props) {
   async function handleSubmit() {
     setSubmitError(null);
 
+    // A template is now mandatory for every item.
+    const templateCheck = itemSchema.safeParse({ templateId });
+    if (!templateCheck.success) {
+      setSubmitError(
+        templateCheck.error.issues[0]?.message ?? 'Please select a template.',
+      );
+      return;
+    }
+
     // Validate required fields.
     for (const r of rows) {
       if (r.isRequired) {
@@ -133,13 +143,13 @@ export function ItemForm({ existing }: Props) {
     try {
       if (existing) {
         await updateItem.mutateAsync({
-          templateId: templateId || null,
+          templateId,
           values,
         });
         router.push(`/dashboard/items/${existing.id}`);
       } else {
         const { id } = await createItem.mutateAsync({
-          templateId: templateId || null,
+          templateId,
           values,
         });
         router.push(`/dashboard/items/${id}`);
@@ -163,7 +173,9 @@ export function ItemForm({ existing }: Props) {
             value={templateId}
             onChange={(e) => setTemplateId(Number(e.target.value))}
           >
-            <option value={0}>No template (free-form)</option>
+            <option value={0} disabled>
+              Select a template…
+            </option>
             {templates.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.label}
@@ -174,8 +186,7 @@ export function ItemForm({ existing }: Props) {
 
         {templateId === 0 && (
           <p className="text-sm text-muted-foreground">
-            Select a template to fill in its properties. Items without a template are
-            created empty and values can be added later.
+            A template is required. Choose one to fill in its properties.
           </p>
         )}
 
